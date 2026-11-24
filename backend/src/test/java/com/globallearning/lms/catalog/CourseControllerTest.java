@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,11 +20,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(CourseController.class)
-@AutoConfigureMockMvc(addFilters = false)
+@WebMvcTest(
+    value = CourseController.class,
+    properties = {
+        "lms.auth.username=test-user",
+        "lms.auth.password=test-password",
+        "lms.auth.jwt-secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
+    }
+)
+@AutoConfigureMockMvc
 @Import({CourseMapper.class, LegacyCourseCodeParser.class})
 class CourseControllerTest {
 
@@ -57,5 +66,26 @@ class CourseControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("CS3401"))
             .andExpect(jsonPath("$.level").value("ADVANCED"));
+    }
+
+    @Test
+    void requiresAuthenticationForCourseUpdates() throws Exception {
+        mockMvc.perform(put("/api/courses/CS1007")
+                .contentType("application/json")
+                .content("{\"title\":\"Updated\",\"description\":\"Description\",\"credits\":10}"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void acceptsBearerAuthenticationForCourseUpdates() throws Exception {
+        given(courseService.update("CS1007", "Updated", "Description", 10))
+            .willReturn(new Course("CS1007", "Updated", "Description", CourseLevel.FOUNDATION, 10, true));
+
+        mockMvc.perform(put("/api/courses/CS1007")
+                .with(SecurityMockMvcRequestPostProcessors.jwt())
+                .contentType("application/json")
+                .content("{\"title\":\"Updated\",\"description\":\"Description\",\"credits\":10}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.title").value("Updated"));
     }
 }

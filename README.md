@@ -53,6 +53,12 @@ The backend and frontend run as separate processes.
 
 ### 1. Start the API
 
+Configure `LMS_AUTH_USERNAME`, `LMS_AUTH_PASSWORD`, and `LMS_JWT_SECRET` in the
+backend process environment before starting the API. Keep these values outside
+source control. `LMS_JWT_SECRET` must be a Base64-encoded key of at least 32
+bytes; for example, generate one with `openssl rand -base64 32`. The configured
+username and password are the initial login account.
+
 ```bash
 cd backend
 mvn spring-boot:run
@@ -83,8 +89,15 @@ Vite proxies `/api` requests to `http://localhost:8080`, so the frontend and API
 
 The API is rooted at `/api/courses`.
 
+Login is available at `POST /api/auth/login` with a JSON body containing
+`username` and `password`. A successful response includes a 15-minute bearer
+token; send it as `Authorization: Bearer <accessToken>` to update or deactivate
+a course. Catalogue reads remain public. Invalid credentials return `401` with
+`INVALID_CREDENTIALS`.
+
 | Method | Endpoint | Purpose |
 |---|---|---|
+| `POST` | `/api/auth/login` | Authenticate and obtain a bearer token |
 | `GET` | `/api/courses` | List active courses |
 | `GET` | `/api/courses?level=ADVANCED` | Filter active courses by level |
 | `GET` | `/api/courses?q=design` | Search active courses by code or title |

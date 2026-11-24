@@ -22,6 +22,12 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+lms:
+  auth:
+    username: ${LMS_AUTH_USERNAME}
+    password: ${LMS_AUTH_PASSWORD}
+    jwt-secret: ${LMS_JWT_SECRET}
+
 server:
   port: 8080
 
